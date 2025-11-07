@@ -64,7 +64,7 @@ export function Header() {
         {/* 右：主题切换占位，保证中间绝对定位不受挤压 */}
         <div className="flex min-w-0 flex-1 justify-end">
           {/* 右侧：外链 + 主题切换 */}
-          <div className="flex items-center gap-2">
+          {false && <div className="flex items-center gap-2">
             {/* GitHub */}
             <a
               href="https://github.com/wquguru/nof0"
@@ -137,7 +137,7 @@ export function Header() {
                 <path d="M21.04 3.16 3.45 10.2c-1.21.48-1.2 1.16-.22 1.46l4.5 1.4 10.43-6.6c.5-.3.96-.14.58.18l-8.45 7.5-.32 4.66c.47 0 .68-.22.93-.47l2.24-2.17 4.67 3.37c.85.47 1.45.23 1.66-.78L22.7 4.7c.3-1.21-.46-1.76-1.66-1.54Z" />
               </svg>
             </a>
-          </div>
+          </div>}
           <div className="ml-2 hidden sm:flex items-center gap-1 text-[11px]">
             <div
               className={`flex overflow-hidden rounded border`}

@@ -588,7 +588,7 @@ export default function AccountValueChart() {
                     bottom: 40,
                   }}
                 >
-                  <div
+                  {false && <div
                     className="font-semibold tracking-wider text-base sm:text-lg md:text-xl lg:text-2xl"
                     style={{
                       color: "var(--watermark-color)",
@@ -597,7 +597,7 @@ export default function AccountValueChart() {
                     }}
                   >
                     @wquguru
-                  </div>
+                  </div>}
                 </div>
               </div>
             </div>
