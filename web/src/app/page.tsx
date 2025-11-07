@@ -21,8 +21,8 @@ export default function Home() {
               <TabButton name="持仓" tabKey="positions" />
               <TabButton name="模型对话" tabKey="chat" />
               <TabButton name="成交" tabKey="trades" />
-              <TabButton name="分析" disabled />
-              <TabButton name="README.md" tabKey="readme" />
+              {/* <TabButton name="分析" disabled />
+              <TabButton name="README.md" tabKey="readme" /> */}
             </div>
           </Suspense>
           <div className="h-[calc(100%-1.5rem)] overflow-y-auto pr-1">

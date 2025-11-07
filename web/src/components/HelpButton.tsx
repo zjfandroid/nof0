@@ -16,8 +16,8 @@ export function HelpButton() {
   return (
     <button
       onClick={handleClick}
-      aria-label="打开帮助文档"
-      title="帮助文档"
+      aria-label="打开Crest"
+      title="Crest"
       className="fixed bottom-6 right-6 z-40 flex items-center justify-center w-12 h-12 rounded-full border chip-btn shadow-lg transition-all duration-200 hover:scale-110"
       style={{
         background: "var(--panel-bg)",
