@@ -7,6 +7,7 @@ import { ModelLogoChip } from "@/components/shared/ModelLogo";
 // theme handled via CSS variables
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { transContent } from "@/lib/api/chat";
 
 export default function ModelChatPanel() {
   const { items, isLoading, isError } = useConversations();
@@ -15,6 +16,13 @@ export default function ModelChatPanel() {
   const pathname = usePathname();
   const qModel = (search.get("model") || "ALL").trim();
   // use CSS variables for colors instead of theme branching
+
+  // 翻译状态管理
+  const [translationStates, setTranslationStates] = useState<Record<string, {
+    translatedContent: string | null;
+    isTranslating: boolean;
+    isTranslated: boolean;
+  }>>({});
 
   // Flat list across all models, sorted by time desc
   const list = useMemo(() => {
@@ -47,6 +55,51 @@ export default function ModelChatPanel() {
     arr.sort((a, b) => Number(b.timestamp) - Number(a.timestamp));
     return qModel === "ALL" ? arr : arr.filter((r) => r.model_id === qModel);
   }, [items, qModel]);
+
+  // 自动翻译前三条没有翻译的数据
+  useEffect(() => {
+    if (list.length > 0) {
+      // 获取前三条数据
+      const topThreeItems = list.slice(0, 3);
+      
+      topThreeItems.forEach((item, index) => {
+        const itemKey = `${item.model_id}:${item.timestamp}`;
+        
+        // 检查是否已经翻译过
+        const existingState = translationStates[itemKey];
+        if (!existingState?.isTranslated && !existingState?.isTranslating && item.content) {
+          // 设置翻译中状态
+          setTranslationStates(prev => ({
+            ...prev,
+            [itemKey]: { ...prev[itemKey], isTranslating: true }
+          }));
+          
+          // 自动翻译数据
+          import('@/lib/api/chat').then(module => 
+            module.transContent(item.content || '')
+          ).then(response => {
+            if (response && response.choices && response.choices.length > 0) {
+              const translatedText = response.choices[0].message.content;
+              setTranslationStates(prev => ({
+                ...prev,
+                [itemKey]: {
+                  translatedContent: translatedText,
+                  isTranslating: false,
+                  isTranslated: true
+                }
+              }));
+            }
+          }).catch(error => {
+            console.error(`自动翻译失败 (${index + 1}):`, error);
+            setTranslationStates(prev => ({
+              ...prev,
+              [itemKey]: { ...prev[itemKey], isTranslating: false }
+            }));
+          });
+        }
+      });
+    }
+  }, [list, translationStates]);
 
   // Note: Translation prefetching has been removed.
 
@@ -81,17 +134,61 @@ export default function ModelChatPanel() {
           ),
         ]}
       />
-      {list.map((row, idx) => (
-        <ChatCard
-          key={`${row.model_id}:${row.timestamp}:${idx}`}
-          modelId={row.model_id}
-          content={row.content}
-          timestamp={row.timestamp}
-          user_prompt={row.user_prompt}
-          cot_trace={row.cot_trace}
-          llm_response={row.llm_response}
-        />
-      ))}
+      {list.map((row, idx) => {
+        const cardKey = `${row.model_id}:${row.timestamp}`;
+        const translationState = translationStates[cardKey] || {
+          translatedContent: null,
+          isTranslating: false,
+          isTranslated: false
+        };
+        
+        return (
+          <ChatCard
+            key={cardKey}
+            modelId={row.model_id}
+            content={row.content}
+            timestamp={row.timestamp}
+            user_prompt={row.user_prompt}
+            cot_trace={row.cot_trace}
+            llm_response={row.llm_response}
+            translationState={translationState}
+            onTranslate={(key, content) => {
+              setTranslationStates(prev => ({
+                ...prev,
+                [key]: { ...prev[key], isTranslating: true }
+              }));
+              
+              import('@/lib/api/chat').then(module => 
+                module.transContent(content)
+              ).then(response => {
+                if (response && response.choices && response.choices.length > 0) {
+                  const translatedText = response.choices[0].message.content;
+                  setTranslationStates(prev => ({
+                    ...prev,
+                    [key]: {
+                      translatedContent: translatedText,
+                      isTranslating: false,
+                      isTranslated: true
+                    }
+                  }));
+                }
+              }).catch(error => {
+                console.error('翻译失败:', error);
+                setTranslationStates(prev => ({
+                  ...prev,
+                  [key]: { ...prev[key], isTranslating: false }
+                }));
+              });
+            }}
+            onToggleTranslation={(key, showOriginal) => {
+              setTranslationStates(prev => ({
+                ...prev,
+                [key]: { ...prev[key], isTranslated: !showOriginal }
+              }));
+            }}
+          />
+        );
+      })}
     </div>
   );
 
@@ -157,6 +254,9 @@ function ChatCard({
   cot_trace,
   llm_response,
   history,
+  translationState,
+  onTranslate,
+  onToggleTranslation,
 }: {
   modelId: string;
   content?: string;
@@ -165,10 +265,34 @@ function ChatCard({
   cot_trace?: any;
   llm_response?: any;
   history?: any[];
+  translationState?: {
+    translatedContent: string | null;
+    isTranslating: boolean;
+    isTranslated: boolean;
+  };
+  onTranslate?: (key: string, content: string) => void;
+  onToggleTranslation?: (key: string, showOriginal: boolean) => void;
 }) {
   const color = getModelColor(modelId);
   const [open, setOpen] = useState(false);
   const [openHist, setOpenHist] = useState<Record<string, boolean>>({});
+
+  const cardKey = `${modelId}:${timestamp}`;
+  const { translatedContent, isTranslating, isTranslated } = translationState || {
+    translatedContent: null,
+    isTranslating: false,
+    isTranslated: false
+  };
+
+  const content_str = useMemo(() => {
+    if (isTranslated && translatedContent) {
+      return translatedContent;
+    }
+    if (content) {
+      return content;
+    }
+    return '(no summary)';
+  }, [content, translatedContent, isTranslated]);
 
   // Translation cache and toggles removed; render content as-is
   return (
@@ -205,8 +329,22 @@ function ChatCard({
             className={`whitespace-pre-wrap terminal-text text-xs leading-relaxed`}
             style={{ color: "var(--foreground)" }}
           >
-            {content || "(no summary)"}
+            {content_str || "(no summary)"}
           </div>
+         {!isTranslated && <button
+            className={`absolute bottom-1 left-2 text-[11px] italic`}
+            style={{ color: "var(--muted-text)" }}
+            onClick={() => {
+              if (isTranslated) {
+                onToggleTranslation?.(cardKey, isTranslated);
+              } else if (content) {
+                onTranslate?.(cardKey, content);
+              }
+            }}
+            disabled={isTranslating}
+          >
+            {isTranslating ? "翻译中..." : (isTranslated ? "原文" : "翻译")}
+          </button>}
           <button
             className={`absolute bottom-1 right-2 text-[11px] italic`}
             style={{ color: "var(--muted-text)" }}

@@ -7,7 +7,7 @@
 export function HelpButton() {
   const handleClick = () => {
     window.open(
-      "https://wquguru.gitbook.io/nof0",
+      "https://crestprotocol.com",
       "_blank",
       "noopener,noreferrer",
     );

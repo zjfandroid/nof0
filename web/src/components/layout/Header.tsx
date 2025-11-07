@@ -33,7 +33,7 @@ export function Header() {
             className={`font-semibold tracking-wide ui-sans`}
             style={{ color: "var(--brand-accent)" }}
           >
-            nof0
+            CrestAI
           </Link>
         </div>
 
